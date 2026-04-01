@@ -209,7 +209,3 @@ To reproduce:
 ```bash
 python scripts/baseline.py --policy rule_based --seed 42 --output baseline_scores.json
 ```
-
-## License
-
-MIT
