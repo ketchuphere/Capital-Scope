@@ -37,7 +37,7 @@ def fail(label, detail=""):
     print(msg)
     results.append((False, label))
 
-# ─── 1. Dependencies ──────────────────────────────────────────────────────────
+
 section("1. DEPENDENCIES")
 for pkg, import_name in [("pydantic", "pydantic"), ("fastapi", "fastapi"),
                           ("uvicorn", "uvicorn"),   ("openai", "openai")]:
@@ -48,7 +48,7 @@ for pkg, import_name in [("pydantic", "pydantic"), ("fastapi", "fastapi"),
     except ImportError:
         fail(f"{pkg} NOT INSTALLED", f"run: pip install {pkg}")
 
-# ─── 2. Env logic — hold policy ───────────────────────────────────────────────
+
 section("2. ENV LOGIC — Hold Policy (all 3 tasks)")
 try:
     from treasury_env import TreasuryCashPositionPlanner
@@ -80,7 +80,7 @@ try:
 except Exception as e:
     fail("Env import/run failed", str(e))
 
-# ─── 3. Rule-based baseline ────────────────────────────────────────────────────
+
 section("3. RULE-BASED BASELINE (scripts/baseline.py)")
 try:
     spec = importlib.util.spec_from_file_location(
@@ -111,7 +111,7 @@ try:
 except Exception as e:
     fail("Rule-based baseline failed", str(e))
 
-# ─── 4. HTTP server + all endpoints ───────────────────────────────────────────
+
 section("4. HTTP SERVER — All Endpoints")
 server_proc = None
 try:
@@ -195,7 +195,7 @@ finally:
         server_proc.terminate()
         server_proc.wait()
 
-# ─── 5. inference.py structure ────────────────────────────────────────────────
+
 section("5. inference.py MANDATORY REQUIREMENTS")
 try:
     with open(os.path.join(ROOT, "inference.py")) as f:
@@ -217,7 +217,7 @@ try:
 except Exception as e:
     fail("Could not read inference.py", str(e))
 
-# ─── 6. Pytest ────────────────────────────────────────────────────────────────
+
 section("6. PYTEST TEST SUITE")
 try:
     r = subprocess.run(
@@ -236,7 +236,7 @@ except FileNotFoundError:
 except Exception as e:
     fail("pytest run failed", str(e))
 
-# ─── Summary ──────────────────────────────────────────────────────────────────
+
 section("SUMMARY")
 passed = sum(1 for ok_, _ in results if ok_)
 total  = len(results)
@@ -244,10 +244,10 @@ failed = [(label) for ok_, label in results if not ok_]
 
 print(f"\n  Passed: {passed}/{total}")
 if failed:
-    print(f"\n  ❌ Failing checks:")
+    print(f"\n Failing checks:")
     for f in failed:
         print(f"       • {f}")
     print(f"\n  Fix the above, then re-run: python run_checks.py")
 else:
-    print(f"\n  {PASS} Everything looks good — project is submission-ready!")
+    print(f"\n  {PASS} Everything looks good , project is submission-ready!")
 print()
