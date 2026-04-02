@@ -1,14 +1,16 @@
 """
-FastAPI server exposing the OpenEnv HTTP interface.
+FastAPI API — Capital Scope Treasury Environment
 
 Endpoints:
-  POST /reset         → Initial observation
-  POST /step          → Step the environment
-  GET  /state         → Full serializable state
-  GET  /tasks         → Task list + action schema
-  GET  /grader        → Grader score for current episode
-  POST /baseline      → Run baseline inference on all tasks
-  GET  /health        → Health check
+  POST /reset     → Initialize environment
+  POST /step      → Execute action (advance one step)
+  GET  /state     → Current full state
+  GET  /tasks     → Available tasks + schema
+  GET  /grader    → Performance metrics
+  POST /baseline  → Run baseline policy
+  GET  /health    → Health check
+
+Used for agent interaction, simulation control, and evaluation.
 """
 from __future__ import annotations
 import os
@@ -16,16 +18,11 @@ import json
 import time
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
 from treasury_env import TreasuryCashPositionPlanner
 from treasury_env.models import TreasuryAction, ActionType
-
-
-# ─── Request / Response DTOs ──────────────────────────────────────────────────
 
 class ResetRequest(BaseModel):
     task_id: Optional[str] = "task_1_daily_funding"
@@ -46,8 +43,6 @@ class BaselineRequest(BaseModel):
     model: str = "gpt-4o-mini"
 
 
-# ─── App State ────────────────────────────────────────────────────────────────
-
 _env = TreasuryCashPositionPlanner()
 _initialized = False
 
@@ -59,8 +54,6 @@ async def lifespan(app: FastAPI):
     _initialized = True
     yield
 
-
-# ─── App ──────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="CapitalScope — Treasury Cash Position Planner",
@@ -80,8 +73,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
@@ -165,8 +156,6 @@ async def baseline(req: BaselineRequest):
     results = run_rule_based_baseline(seed=req.seed)
     return results
 
-
-# ─── Rule-Based Baseline ──────────────────────────────────────────────────────
 
 def rule_based_policy(obs_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
