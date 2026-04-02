@@ -1,7 +1,7 @@
 
-# CapitalScope Treasury Cash Position Planner
+# CapitalScope (Treasury Cash Position Planner)
 
-> *An AI agent that thinks like a CFO — managing millions in cash, juggling payments, and maximizing returns. Every. Single. Day.*
+> *An AI agent that thinks like a CFO which managing millions in cash, juggling payments, and maximizing returns. Every. Single. Day.*
 
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-compliant-blue)](https://openenv.dev)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-brightgreen)](https://python.org)
@@ -16,7 +16,7 @@ Every morning at a real company, a treasury team sits down and answers the same 
 - *We have $500K sitting idle — should we sweep it into the money market?*
 - *A $120K supplier payment is due today but our operating account is at $80K — what do we do?*
 
-This is **cash positioning** — one of the most consequential operational tasks in corporate finance. Get it wrong and you miss payroll. Get it right and you earn millions in yield on idle cash.
+This is **cash positioning** one of the most consequential operational tasks in corporate finance. Get it wrong and you miss payroll. Get it right and you earn millions in yield on idle cash.
 
 **CapitalScope** turns this into a learning environment where AI agents can master treasury operations through trial, reward, and iteration.
 
