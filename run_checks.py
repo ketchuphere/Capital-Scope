@@ -117,7 +117,7 @@ server_proc = None
 try:
     import urllib.request, urllib.error
 
-    # Start server in background
+    #Start server in background
     server_proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app:app",
          "--host", "127.0.0.1", "--port", "17860", "--log-level", "error"],
@@ -125,7 +125,7 @@ try:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    # Wait for startup
+    #Wait for startup
     for _ in range(20):
         try:
             urllib.request.urlopen("http://127.0.0.1:17860/health", timeout=1)
@@ -147,43 +147,43 @@ try:
         r = urllib.request.urlopen(req, timeout=10)
         return json.loads(r.read())
 
-    # /health
+    #/health
     h = get("/health")
     ok("/health", h.get("status"))
 
-    # /tasks
+    #/tasks
     t = get("/tasks")
     task_count = len(t.get("tasks", []))
     ok("/tasks", f"{task_count} tasks returned")
 
-    # /reset
+    #/reset
     obs = post("/reset", {"task_id": "task_1_daily_funding", "seed": 42})
     ok("/reset", f"day={obs.get('day')}  balances={list(obs.get('balances',{}).keys())}")
 
-    # /step (hold)
+    #/step (hold)
     step_r = post("/step", {"action_type": "hold", "amount": 0})
     ok("/step (hold)", f"reward={step_r.get('reward',{}).get('total'):.3f}  done={step_r.get('done')}")
 
-    # /state
+    #/state
     state = get("/state")
     ok("/state", f"day={state.get('day')}  task={state.get('task_id')}")
 
-    # /grader
+    #/grader
     gr = get("/grader")
     ok("/grader", f"overall={gr.get('overall'):.4f}")
 
-    # /baseline (rule-based, no LLM needed)
+    #/baseline (rule-based, no LLM needed)
     bl = post("/baseline", {"seed": 42})
     mean_bl = bl.get("mean_score", 0)
     ok("/baseline", f"mean_score={mean_bl:.4f}")
 
-    # Step through to completion, verify done
+    #Step through to completion, verify done
     post("/reset", {"task_id": "task_1_daily_funding", "seed": 42})
     for _ in range(7):
         r2 = post("/step", {"action_type": "hold", "amount": 0})
     ok("/step → done=True after horizon", f"done={r2.get('done')}")
 
-    # Final grader
+    #Final grader
     final = get("/grader")
     ok("Final /grader score in [0,1]",
        f"overall={final.get('overall'):.4f} ✓" if 0 <= final.get("overall", -1) <= 1 else "OUT OF RANGE")
