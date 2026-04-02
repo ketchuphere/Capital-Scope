@@ -1,24 +1,54 @@
 """
-inference.py — Treasury Cash Position Planner
-===================================================
-MANDATORY inference script for OpenEnv hackathon submission.
+inference.py — Capital Scope Treasury Agent Runner
+This script serves as the **core inference pipeline** for the OpenEnv submission.
+It executes an AI agent within the treasury simulation environment and evaluates
+its performance across defined financial decision tasks.
 
-Environment variables required:
-    API_BASE_URL   The API endpoint for the LLM (e.g. https://router.huggingface.co/v1)
-    MODEL_NAME     The model identifier to use (e.g. Qwen/Qwen2.5-72B-Instruct)
-    HF_TOKEN       Your Hugging Face API token (used as API key)
+Required Environment Variables
 
-Usage:
+Before running, ensure the following variables are set:
+
+    API_BASE_URL   → Base URL for the LLM provider
+                     (e.g. https://router.huggingface.co/v1)
+
+    MODEL_NAME     → Model identifier to be used
+                     (e.g. Qwen/Qwen2.5-72B-Instruct)
+
+    HF_TOKEN       → Hugging Face API token (used for authentication)
+
+Usage
+
+Run all tasks with default configuration:
+
     API_BASE_URL=https://router.huggingface.co/v1 \
     MODEL_NAME=Qwen/Qwen2.5-72B-Instruct \
     HF_TOKEN=hf_xxx \
     python inference.py
 
-    # Override seed or run only one task:
-    python inference.py --seed 0 --task task_1_daily_funding
+Run a specific task:
+
+    python inference.py --task task_1_daily_funding
+
+Override random seed:
+
+    python inference.py --seed 0
+
+Save output results:
+
     python inference.py --output results.json
 
-Runtime guarantee: completes in < 20 min on vcpu=2, 8 GB RAM.
+Performance Constraints
+
+->Designed to run within OpenEnv limits
+->Expected runtime: < 20 minutes
+->Compatible with: 2 vCPU, 8 GB RAM environments
+
+Purpose
+
+This script:
+->Executes decision-making actions in the environment
+->Collects performance metrics via the grader
+->Outputs structured evaluation results
 """
 from __future__ import annotations
 
@@ -29,21 +59,16 @@ import re
 import textwrap
 import argparse
 from typing import List, Dict, Any, Optional
-
-# ── OpenAI client (mandatory per spec) ────────────────────────────────────────
 from openai import OpenAI
-
-# ── Treasury environment ───────────────────────────────────────────────────────
+#Treasury environment imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from treasury_env import TreasuryCashPositionPlanner
 from treasury_env.models import TreasuryAction, ActionType
 
-# ── Config from environment variables (mandatory) ─────────────────────────────
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 API_KEY: str      = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "")
 MODEL_NAME: str   = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-
-# ── Inference hyperparameters ─────────────────────────────────────────────────
+#hyperparameters and constants
 MAX_STEPS   = 14        # Upper bound; tasks end at their own horizon
 TEMPERATURE = 0.0       # Deterministic — reproducible baseline
 MAX_TOKENS  = 256
@@ -56,13 +81,9 @@ TASK_IDS = [
     "task_3_multi_account_liquidity",
 ]
 
-# ── JSON extraction regex ─────────────────────────────────────────────────────
+# Regex patterns for robust JSON extraction from LLM responses
 _JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
 _BRACE_RE      = re.compile(r"\{[\s\S]*\}", re.DOTALL)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Prompts
-# ─────────────────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert corporate treasury manager controlling a cash position simulation.
@@ -104,7 +125,7 @@ def _build_user_prompt(step: int, obs: Dict[str, Any]) -> str:
     risk      = obs.get("risk_flags", [])
     pending   = obs.get("pending_transfers", [])
 
-    # Summarise upcoming obligations (unpaid, due soon)
+    #Summarise upcoming obligations (unpaid, due soon)
     outflows = obs.get("scheduled_outflows", [])
     upcoming = [
         o for o in outflows
@@ -114,12 +135,12 @@ def _build_user_prompt(step: int, obs: Dict[str, Any]) -> str:
                                   {"critical":0,"high":1,"normal":2,"low":3}
                                    .get(o.get("priority","low"), 3)))
 
-    # Format balances
+    #Format balances
     bal_lines = "\n".join(
         f"  {acct}: ${bal:>12,.2f}" for acct, bal in balances.items()
     )
 
-    # Format upcoming obligations
+    #Format upcoming obligations
     obl_lines = "\n".join(
         f"  [{o.get('priority','?').upper():8s}] Day {o.get('due_day'):>2d} — "
         f"${o.get('amount',0):>10,.2f} from '{o.get('account_id')}' "
@@ -127,14 +148,14 @@ def _build_user_prompt(step: int, obs: Dict[str, Any]) -> str:
         for o in upcoming
     ) or "  (none in next 3 days)"
 
-    # Format pending transfers
+    #Format pending transfers
     pend_lines = "\n".join(
         f"  ${t.get('amount',0):>10,.2f} → {t.get('destination_account')} "
         f"(settles day {t.get('settlement_day')})"
         for t in pending
     ) or "  (none)"
 
-    # Format expected inflows (certain and likely)
+    #Format expected inflows (certain and likely)
     inflows = obs.get("scheduled_inflows", [])
     inflow_soon = [
         i for i in inflows
@@ -183,10 +204,6 @@ def _build_user_prompt(step: int, obs: Dict[str, Any]) -> str:
     return prompt
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LLM call + response parsing
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _call_llm(client: OpenAI, step: int, obs: Dict[str, Any]) -> str:
     """Call the LLM and return raw response text."""
     user_prompt = _build_user_prompt(step, obs)
@@ -203,7 +220,7 @@ def _call_llm(client: OpenAI, step: int, obs: Dict[str, Any]) -> str:
     )
     return completion.choices[0].message.content or ""
 
-
+#llms can be unpredictable — this function robustly extracts a JSON action dict from the response text, with multiple fallbacks and a safe default action.
 def _parse_action(response_text: str) -> Dict[str, Any]:
     """
     Extract a JSON action dict from the LLM response.
@@ -236,11 +253,7 @@ def _parse_action(response_text: str) -> Dict[str, Any]:
     except (json.JSONDecodeError, ValueError):
         return FALLBACK_ACTION.copy()
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Episode runner
-# ─────────────────────────────────────────────────────────────────────────────
-
+#Extracted and adapted from run_checks.py for testing purposes
 def run_episode(
     task_id: str,
     client: OpenAI,
@@ -269,7 +282,7 @@ def run_episode(
     while not done and step < MAX_STEPS:
         step += 1
 
-        # ── Get LLM decision ─────────────────────────────────────────────────
+        #Call LLM to get action
         try:
             raw_response = _call_llm(client, step, obs_dict)
         except Exception as exc:
@@ -285,7 +298,7 @@ def run_episode(
                   f"src={action_dict.get('source_account')} "
                   f"dst={action_dict.get('destination_account')}")
 
-        # ── Execute action ────────────────────────────────────────────────────
+        
         try:
             action = TreasuryAction(
                 action_type=ActionType(action_dict.get("action_type", "hold")),
@@ -319,7 +332,7 @@ def run_episode(
                   f"score_so_far={gs.get('overall', 0):.3f} | "
                   f"payment_rate={gs.get('payment_rate', 0):.3f}")
 
-    # ── Final grader score ────────────────────────────────────────────────────
+    #Final grading
     final = env.grade()
 
     if verbose:
@@ -347,11 +360,7 @@ def run_episode(
         "details":           final.details,
     }
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────────────────────────────────────
-
+#Main entry point with argument parsing and orchestration of multiple tasks, plus summary and output saving.
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="CapitalScope — LLM inference script (OpenEnv hackathon)"
@@ -366,7 +375,7 @@ def main() -> None:
                         help="Suppress per-step output")
     args = parser.parse_args()
 
-    # ── Validate env vars ─────────────────────────────────────────────────────
+    
     if not API_KEY:
         print("ERROR: HF_TOKEN (or API_KEY) environment variable is not set.")
         print("  Export your Hugging Face token:  export HF_TOKEN=hf_xxx")
@@ -375,7 +384,6 @@ def main() -> None:
         print("ERROR: MODEL_NAME environment variable is not set.")
         sys.exit(1)
 
-    # ── Build OpenAI client pointing at HF router ─────────────────────────────
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     task_ids = [args.task] if args.task else TASK_IDS
@@ -398,7 +406,7 @@ def main() -> None:
         )
         all_results.append(result)
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    #Summary table
     print(f"\n{'='*65}")
     print("  INFERENCE SUMMARY")
     print(f"{'='*65}")
@@ -412,7 +420,7 @@ def main() -> None:
     print(f"  {'Mean score':<42} {mean:>8.4f}")
     print(f"{'='*65}\n")
 
-    # ── Save output ───────────────────────────────────────────────────────────
+    #Save results as JSON for potential further analysis
     output_path = args.output or "inference_results.json"
     payload = {
         "model":       MODEL_NAME,
