@@ -10,8 +10,6 @@ from treasury_env import TreasuryCashPositionPlanner
 from treasury_env.models import TreasuryAction, ActionType
 
 
-# ─── Fixtures ─────────────────────────────────────────────────────────────────
-
 @pytest.fixture
 def env():
     return TreasuryCashPositionPlanner()
@@ -33,9 +31,6 @@ def env_task2(env):
 def env_task3(env):
     env.reset(task_id="task_3_multi_account_liquidity", seed=42)
     return env
-
-
-# ─── Reset Tests ──────────────────────────────────────────────────────────────
 
 class TestReset:
     def test_reset_returns_observation(self, env):
@@ -73,8 +68,6 @@ class TestReset:
         b2 = dict(obs2.balances)
         assert b1 == b2
 
-
-# ─── Step Tests ───────────────────────────────────────────────────────────────
 
 class TestStep:
     def test_step_returns_tuple(self, env_task1):
@@ -146,8 +139,6 @@ class TestStep:
         assert 0.0 <= gs["overall"] <= 1.0
 
 
-# ─── State Tests ──────────────────────────────────────────────────────────────
-
 class TestState:
     def test_state_returns_serializable(self, env_task1):
         state = env_task1.state()
@@ -170,7 +161,6 @@ class TestState:
         assert state.day == 2
 
 
-# ─── Tasks Endpoint Tests ─────────────────────────────────────────────────────
 
 class TestTasks:
     def test_tasks_returns_list(self, env):
@@ -193,8 +183,6 @@ class TestTasks:
         assert "task_2_sweep_optimization" in ids
         assert "task_3_multi_account_liquidity" in ids
 
-
-# ─── Grader Tests ─────────────────────────────────────────────────────────────
 
 class TestGrader:
     def test_grade_returns_scores(self, env_task1):
